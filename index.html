@@ -609,7 +609,7 @@
 <div class="choice-sheet" id="choice-sheet" onclick="closeChoiceSheet(event)">
   <div class="choice-box">
     <div class="choice-handle"></div>
-    <div class="choice-title">Add to closet v2</div>
+    <div class="choice-title">Add to closet</div>
     <button class="choice-btn" id="choice-ai" onclick="startAdd('ai')">
       <span class="choice-btn-icon">✦</span>
       <span class="choice-btn-text">
@@ -708,9 +708,13 @@
 
     // Limit banner on add screen
     document.getElementById('limit-banner').classList.toggle('show', atLimit);
-    document.getElementById('upload-sub-text').textContent = atLimit
-      ? 'Photo saved — no scans left'
-      : `AI will auto-tag it · ${left} scan${left !== 1 ? 's' : ''} left`;
+    if (!isManualMode) {
+      document.getElementById('upload-sub-text').textContent = atLimit
+        ? 'Photo saved — no scans left'
+        : `AI will auto-tag it · ${left} scan${left !== 1 ? 's' : ''} left`;
+    } else {
+      document.getElementById('upload-sub-text').textContent = 'Add a photo of your item';
+    }
   }
 
   function showScreen(name) {
