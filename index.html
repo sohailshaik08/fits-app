@@ -853,7 +853,7 @@ Only use items that exist in the wardrobe. 2-3 items per outfit.`
     }
     container.innerHTML = outfits.map((outfit, i) => {
       const itemsHtml = outfit.items.map(name => {
-        const found = wardrobe.find(w => w.name.toLowerCase() === name.toLowerCase());
+        const found = wardrobe.find(w => w.name.toLowerCase() === name.toLowerCase() || w.name.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(w.name.toLowerCase()));
         const emoji = found ? (EMOJIS[found.category] || '👔') : '👔';
         const img = found?.imageData ? `<img src="${found.imageData}" alt="${name}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;">` : '';
         return `<div class="outfit-col">
