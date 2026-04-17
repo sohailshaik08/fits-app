@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Fits — Wardrobe Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F7F5F0;
+    --surface: #FFFFFF;
+    --surface2: #F0EDE6;
+    --border: rgba(0,0,0,0.08);
+    --border2: rgba(0,0,0,0.14);
+    --text: #1A1814;
+    --text2: #6B6560;
+    --text3: #A8A39D;
+    --accent: #2D5016;
+    --accent-light: #EAF0E4;
+    --accent-text: #2D5016;
+    --blue: #1A3A5C;
+    --blue-light: #E4EBF5;
+    --warn: #7A3B1E;
+    --warn-light: #F5EAE4;
+    --danger: #C0392B;
+    --danger-light: #FDECEA;
+    --radius: 16px;
+    --radius-sm: 10px;
+    --font-display: 'DM Serif Display', serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    max-width: 430px;
+    margin: 0 auto;
+    position: relative;
+    overflow-x: hidden;
+  }
+  .screen { display: none; flex-direction: column; min-height: 100vh; padding-bottom: 72px; }
+  .screen.active { display: flex; }
+  .topbar {
+    padding: 52px 20px 14px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .topbar-row { display: flex; align-items: center; justify-content: space-between; }
+  .topbar h1 { font-family: var(--font-display); font-size: 26px; font-weight: 400; letter-spacing: -0.3px; }
+  .topbar .sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .icon-btn {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--surface2); border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; transition: transform 0.15s;
+  }
+  .icon-btn:active { transform: scale(0.92); }
+  .bottomnav {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 430px;
+    background: var(--surface); border-top: 1px solid var(--border);
+    display: flex; padding: 8px 0 20px; z-index: 20;
+  }
+  .navbtn {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    background: none; border: none; cursor: pointer; padding: 4px 0;
+  }
+  .navbtn svg { width: 22px; height: 22px; stroke: var(--text3); transition: stroke 0.15s; }
+  .navlabel { font-size: 10px; color: var(--text3); font-weight: 500; letter-spacing: 0.02em; transition: color 0.15s; }
+  .navbtn.active svg { stroke: var(--accent); }
+  .navbtn.active .navlabel { color: var(--accent); }
+
+  /* SCAN COUNTER BANNER */
+  .scan-banner {
+    margin: 12px 16px 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .scan-banner-left { font-size: 12px; color: var(--text2); }
+  .scan-banner-left strong { color: var(--text); font-weight: 600; }
+  .scan-bar-wrap { width: 90px; height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; margin-top: 5px; }
+  .scan-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.4s ease; }
+  .scan-bar-fill.near { background: #E67E22; }
+  .scan-bar-fill.full { background: var(--danger); }
+  .scan-count-label { font-size: 11px; font-weight: 600; color: var(--text3); }
+  .scan-count-label.near { color: #E67E22; }
+  .scan-count-label.full { color: var(--danger); }
+
+  .content { flex: 1; padding: 16px; overflow-y: auto; }
+  .section-label {
+    font-size: 10px; font-weight: 600; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin: 20px 0 10px;
+  }
+  .section-label:first-child { margin-top: 4px; }
+  .clothes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .cloth-card {
+    background: var(--surface); border-radius: var(--radius);
+    border: 1px solid var(--border); overflow: hidden;
+    cursor: pointer; transition: transform 0.15s;
+    animation: fadeUp 0.3s ease both;
+  }
+  .cloth-card:active { transform: scale(0.97); }
+  .cloth-img {
+    width: 100%; aspect-ratio: 1;
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 42px; position: relative; overflow: hidden;
+  }
+  .cloth-img img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
+  .cloth-info { padding: 10px; }
+  .cloth-name { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cloth-brand { font-size: 11px; color: var(--text3); margin-top: 1px; }
+  .cloth-tags { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+  .tag { font-size: 10px; padding: 2px 7px; border-radius: 20px; font-weight: 500; background: var(--blue-light); color: var(--blue); }
+  .tag.green { background: var(--accent-light); color: var(--accent-text); }
+  .tag.warm { background: var(--warn-light); color: var(--warn); }
+  .empty-state {
+    text-align: center; padding: 48px 24px;
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+  }
+  .empty-state .icon { font-size: 48px; }
+  .empty-state p { font-size: 14px; color: var(--text2); line-height: 1.6; }
+
+  /* OUTFITS */
+  .weather-card {
+    background: var(--blue); border-radius: var(--radius);
+    padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+    margin-bottom: 16px; color: white;
+  }
+  .weather-emoji { font-size: 32px; }
+  .weather-body { flex: 1; }
+  .weather-city { font-size: 13px; font-weight: 500; opacity: 0.9; }
+  .weather-desc { font-size: 11px; opacity: 0.65; margin-top: 1px; }
+  .weather-temp { font-family: var(--font-display); font-size: 28px; }
+  .occ-row { display: flex; gap: 7px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; }
+  .occ-row::-webkit-scrollbar { display: none; }
+  .occ-chip {
+    font-size: 12px; padding: 7px 14px; border-radius: 20px;
+    border: 1px solid var(--border2); background: var(--surface); color: var(--text2);
+    cursor: pointer; white-space: nowrap; font-weight: 500; transition: all 0.15s; flex-shrink: 0;
+  }
+  .occ-chip.active { background: var(--accent); color: white; border-color: var(--accent); }
+  .outfit-card {
+    background: var(--surface); border-radius: var(--radius);
+    border: 1px solid var(--border); padding: 14px; margin-bottom: 12px;
+    animation: fadeUp 0.35s ease both;
+  }
+  .outfit-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .outfit-title { font-family: var(--font-display); font-size: 17px; }
+  .outfit-badge {
+    font-size: 10px; padding: 3px 9px; border-radius: 20px;
+    background: var(--accent-light); color: var(--accent-text); font-weight: 600;
+  }
+  .outfit-items { display: flex; gap: 8px; margin-bottom: 10px; }
+  .outfit-item {
+    flex: 1; aspect-ratio: 1; background: var(--surface2);
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; position: relative; overflow: hidden;
+  }
+  .outfit-item img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
+  .outfit-col { display: flex; flex-direction: column; flex: 1; }
+  .outfit-item-label { font-size: 9px; color: var(--text3); text-align: center; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 2px; }
+  .outfit-reason { font-size: 12px; color: var(--text2); line-height: 1.55; }
+  .gen-btn {
+    width: 100%; padding: 14px; background: var(--accent); color: white;
+    border: none; border-radius: var(--radius);
+    font-size: 14px; font-weight: 600; font-family: var(--font-body);
+    cursor: pointer; margin-bottom: 16px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: opacity 0.15s, transform 0.15s;
+  }
+  .gen-btn:active { opacity: 0.85; transform: scale(0.98); }
+  .gen-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+  .gen-btn.loading .spinner { display: block; }
+  .gen-btn.loading .btn-label { display: none; }
+  .no-outfits { text-align: center; padding: 32px 16px; font-size: 13px; color: var(--text3); line-height: 1.6; }
+
+  /* ADD SCREEN */
+  .add-content { padding: 16px; overflow-y: auto; flex: 1; }
+  .upload-zone {
+    border: 1.5px dashed var(--border2); border-radius: var(--radius);
+    padding: 28px 16px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+    background: var(--surface); cursor: pointer; margin-bottom: 16px;
+    transition: background 0.15s; position: relative; overflow: hidden;
+  }
+  .upload-zone:active { background: var(--surface2); }
+  .upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .upload-preview { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: var(--radius-sm); display: none; }
+  .upload-icon { font-size: 36px; }
+  .upload-label { font-size: 14px; font-weight: 500; color: var(--text); }
+  .upload-sub { font-size: 12px; color: var(--text3); }
+  .ai-banner {
+    background: var(--accent-light); border-radius: var(--radius-sm);
+    padding: 10px 12px; font-size: 12px; color: var(--accent-text);
+    display: none; align-items: flex-start; gap: 8px; margin-bottom: 14px; line-height: 1.5;
+  }
+  .ai-banner.show { display: flex; }
+  .ai-banner-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+  .limit-banner {
+    background: var(--danger-light); border-radius: var(--radius-sm);
+    padding: 12px 14px; font-size: 13px; color: var(--danger);
+    margin-bottom: 14px; line-height: 1.55; font-weight: 500;
+    display: none;
+  }
+  .limit-banner.show { display: block; }
+  .form-group { margin-bottom: 14px; }
+  .form-label { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 6px; }
+  .form-input, .form-select {
+    width: 100%; padding: 11px 14px;
+    border: 1px solid var(--border2); border-radius: var(--radius-sm);
+    background: var(--surface); color: var(--text);
+    font-size: 14px; font-family: var(--font-body);
+    outline: none; transition: border-color 0.15s; -webkit-appearance: none;
+  }
+  .form-input:focus, .form-select:focus { border-color: var(--accent); }
+  .form-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .color-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .color-dot {
+    width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+    border: 2px solid transparent; transition: transform 0.12s; position: relative;
+  }
+  .color-dot.selected::after {
+    content: '✓'; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  }
+  .color-dot.selected { border-color: var(--text); transform: scale(1.1); }
+  .save-btn {
+    width: 100%; padding: 15px; background: var(--accent); color: white;
+    border: none; border-radius: var(--radius);
+    font-size: 15px; font-weight: 600; font-family: var(--font-body);
+    cursor: pointer; margin-top: 8px; transition: opacity 0.15s, transform 0.15s;
+  }
+  .save-btn:active { opacity: 0.85; transform: scale(0.98); }
+  .save-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+  .ai-loading {
+    display: none; align-items: center; gap: 10px;
+    padding: 10px 12px; background: var(--surface2);
+    border-radius: var(--radius-sm); margin-bottom: 14px;
+    font-size: 12px; color: var(--text2);
+  }
+  .ai-loading.show { display: flex; }
+  .ai-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 0.9s ease-in-out infinite; }
+  .ai-dot:nth-child(2) { animation-delay: 0.15s; }
+  .ai-dot:nth-child(3) { animation-delay: 0.3s; }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    z-index: 50; display: none; align-items: flex-end; justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--surface); border-radius: 24px 24px 0 0;
+    width: 100%; max-width: 430px; max-height: 85vh;
+    overflow-y: auto; padding: 20px; animation: slideUp 0.25s ease;
+  }
+  .modal-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--border2); margin: 0 auto 16px; }
+  .modal h2 { font-family: var(--font-display); font-size: 20px; margin-bottom: 14px; }
+  .detail-row { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .detail-row:last-of-type { border-bottom: none; }
+  .detail-label { color: var(--text3); }
+  .detail-val { font-weight: 500; }
+  .delete-btn {
+    width: 100%; padding: 13px; margin-top: 12px;
+    background: none; border: 1px solid var(--danger); color: var(--danger);
+    border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; font-family: var(--font-body);
+    cursor: pointer;
+  }
+  .filter-row { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; padding-bottom: 2px; }
+  .filter-row::-webkit-scrollbar { display: none; }
+  .filter-chip {
+    font-size: 11px; padding: 5px 11px; border-radius: 20px;
+    border: 1px solid var(--border2); background: var(--surface);
+    color: var(--text2); cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    transition: all 0.12s; font-weight: 500;
+  }
+  .filter-chip.active { background: var(--surface2); color: var(--text); border-color: var(--text3); }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }
+  @keyframes slideUp { from { transform: translateY(60px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+</style>
+</head>
+<body>
+
+<!-- CLOSET SCREEN -->
+<div class="screen active" id="screen-closet">
+  <div class="topbar">
+    <div class="topbar-row">
+      <div>
+        <h1>My Closet</h1>
+        <div class="sub" id="item-count">0 items</div>
+      </div>
+      <button class="icon-btn" onclick="goToAdd()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+    <div class="filter-row">
+      <div class="filter-chip active" onclick="filterCloset('All', this)">All</div>
+      <div class="filter-chip" onclick="filterCloset('Top', this)">Tops</div>
+      <div class="filter-chip" onclick="filterCloset('Bottom', this)">Bottoms</div>
+      <div class="filter-chip" onclick="filterCloset('Shoes', this)">Shoes</div>
+      <div class="filter-chip" onclick="filterCloset('Outerwear', this)">Outerwear</div>
+      <div class="filter-chip" onclick="filterCloset('Accessory', this)">Accessories</div>
+    </div>
+  </div>
+
+  <!-- Scan counter on closet screen -->
+  <div class="scan-banner" id="closet-scan-banner">
+    <div class="scan-banner-left">
+      <strong id="banner-used">0</strong> of 20 AI scans used
+      <div class="scan-bar-wrap">
+        <div class="scan-bar-fill" id="banner-bar" style="width:0%"></div>
+      </div>
+    </div>
+    <span class="scan-count-label" id="banner-label">20 left</span>
+  </div>
+
+  <div class="content" id="closet-content"></div>
+</div>
+
+<!-- OUTFITS SCREEN -->
+<div class="screen" id="screen-outfits">
+  <div class="topbar">
+    <div class="topbar-row">
+      <h1>Outfit Ideas</h1>
+      <span id="weather-date" style="font-size:12px;color:var(--text3);"></span>
+    </div>
+  </div>
+  <div class="content">
+    <div class="weather-card">
+      <div class="weather-emoji" id="w-emoji">🌤</div>
+      <div class="weather-body">
+        <div class="weather-city" id="w-city">Chicago, IL</div>
+        <div class="weather-desc" id="w-desc">Loading weather...</div>
+      </div>
+      <div class="weather-temp" id="w-temp">—°</div>
+    </div>
+    <div class="section-label">Occasion</div>
+    <div class="occ-row">
+      <div class="occ-chip active" onclick="selectOcc(this)">Casual</div>
+      <div class="occ-chip" onclick="selectOcc(this)">Work</div>
+      <div class="occ-chip" onclick="selectOcc(this)">Date night</div>
+      <div class="occ-chip" onclick="selectOcc(this)">Gym</div>
+      <div class="occ-chip" onclick="selectOcc(this)">Party</div>
+      <div class="occ-chip" onclick="selectOcc(this)">Outdoor</div>
+    </div>
+    <button class="gen-btn" id="gen-btn" onclick="generateOutfits()">
+      <span class="btn-label">✦ Generate outfits</span>
+      <div class="spinner"></div>
+    </button>
+    <div id="outfits-container"></div>
+  </div>
+</div>
+
+<!-- ADD SCREEN -->
+<div class="screen" id="screen-add">
+  <div class="topbar">
+    <div class="topbar-row">
+      <h1>Add Item</h1>
+      <button class="icon-btn" onclick="showScreen('closet')">✕</button>
+    </div>
+  </div>
+  <div class="add-content">
+
+    <!-- Scan limit warning -->
+    <div class="limit-banner" id="limit-banner">
+      You've used all 20 AI scans. You can still add items manually below — just fill in the details yourself.
+    </div>
+
+    <div class="upload-zone" id="upload-zone" onclick="triggerUpload()">
+      <input type="file" id="file-input" accept="image/*" onchange="handleImageUpload(event)" onclick="event.stopPropagation()">
+      <img class="upload-preview" id="upload-preview" alt="">
+      <div id="upload-placeholder" style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+        <div class="upload-icon">📷</div>
+        <div class="upload-label">Upload a photo</div>
+        <div class="upload-sub" id="upload-sub-text">AI will auto-tag it for you</div>
+      </div>
+    </div>
+
+    <div class="ai-loading" id="ai-loading">
+      <div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div>
+      <span>Analyzing your item...</span>
+    </div>
+
+    <div class="ai-banner" id="ai-banner">
+      <span class="ai-banner-icon">✦</span>
+      <span id="ai-banner-text"></span>
+    </div>
+
+    <!-- Scan counter on add screen -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <span style="font-size:11px;color:var(--text3);">AI scans</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:80px;height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;">
+          <div class="scan-bar-fill" id="add-bar" style="width:0%"></div>
+        </div>
+        <span class="scan-count-label" id="add-scan-label" style="font-size:11px;">20 left</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Item name</label>
+      <input type="text" class="form-input" id="f-name" placeholder="e.g. My go-to tee, Interview shirt">
+    </div>
+    <div class="form-row2">
+      <div class="form-group">
+        <label class="form-label">Brand</label>
+        <input type="text" class="form-input" id="f-brand" placeholder="e.g. H&M, Zara">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Size</label>
+        <input type="text" class="form-input" id="f-size" placeholder="e.g. M, 32, 9">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Category</label>
+      <select class="form-select" id="f-category">
+        <option>Top</option><option>Bottom</option><option>Shoes</option><option>Outerwear</option><option>Accessory</option>
+      </select>
+    </div>
+    <div class="form-row2">
+      <div class="form-group">
+        <label class="form-label">Occasion</label>
+        <select class="form-select" id="f-occasion">
+          <option>Casual</option><option>Smart casual</option><option>Formal</option><option>Work</option><option>Gym</option><option>Party</option><option>Outdoor</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Season</label>
+        <select class="form-select" id="f-season">
+          <option>All seasons</option><option>Spring/Summer</option><option>Fall/Winter</option><option>Summer</option><option>Winter</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Color</label>
+      <div class="color-row" id="color-row">
+        <div class="color-dot selected" style="background:#1a1a1a;" data-color="Black" onclick="selectColor(this)"></div>
+        <div class="color-dot" style="background:#ffffff;border:1px solid #ddd;" data-color="White" onclick="selectColor(this)"></div>
+        <div class="color-dot" style="background:#1e3a5f;" data-color="Navy" onclick="selectColor(this)"></div>
+        <div class="color-dot" style="background:#6B8E6B;" data-color="Olive green" onclick="selectColor(this)"></div>
+        <div class="color-dot" style="background:#8B4513;" data-color="Brown" onclick="selectColor(this)"></div>
+        <div class="color-dot" style="background:#808080;" data-color="Gray" onclick="selectColor(this)"></div>
+        <div class="color-dot" style="background:#C41E3A;" data-color="Red" onclick="selectColor(this)"></div>
+        <div class="color-dot" style="background:#4A90D9;" data-color="Blue" onclick="selectColor(this)"></div>
+        <div class="color-dot" style="background:#F5C518;" data-color="Yellow" onclick="selectColor(this)"></div>
+        <div class="color-dot" style="background:#D4A5A5;" data-color="Pink" onclick="selectColor(this)"></div>
+        <div class="color-dot" style="background:#8B6914;" data-color="Khaki" onclick="selectColor(this)"></div>
+        <div class="color-dot" style="background:#4B0082;" data-color="Purple" onclick="selectColor(this)"></div>
+      </div>
+    </div>
+    <button class="save-btn" id="save-btn" onclick="saveItem()">Save to closet</button>
+    <div style="height:12px;"></div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottomnav">
+  <button class="navbtn active" id="nav-closet" onclick="showScreen('closet')">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+    <span class="navlabel">Closet</span>
+  </button>
+  <button class="navbtn" id="nav-outfits" onclick="showScreen('outfits')">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M12 3l1.5 5h5l-4 3 1.5 5L12 13l-4 3 1.5-5-4-3h5z"/></svg>
+    <span class="navlabel">Outfits</span>
+  </button>
+</nav>
+
+<!-- ITEM DETAIL MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal"><div class="modal-handle"></div><div id="modal-content"></div></div>
+</div>
+
+<script>
+  // ── CONFIG ──────────────────────────────────────────────
+  // After deploying to Vercel, replace this with your actual URL
+  // e.g. 'https://fits-app.vercel.app'
+  const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:3000'
+    : window.location.origin;
+  const SCAN_LIMIT = 20;
+  // ────────────────────────────────────────────────────────
+
+  let wardrobe = JSON.parse(localStorage.getItem('wardrobe') || '[]');
+  let scansUsed = parseInt(localStorage.getItem('scansUsed') || '0');
+  let currentImageData = null;
+  let currentFilter = 'All';
+  let currentOcc = 'Casual';
+  let weatherData = null;
+
+  const EMOJIS = { 'Top': '👕', 'Bottom': '👖', 'Shoes': '👟', 'Outerwear': '🧥', 'Accessory': '🎒' };
+
+  function saveWardrobe() { localStorage.setItem('wardrobe', JSON.stringify(wardrobe)); }
+  function saveScans() { localStorage.setItem('scansUsed', scansUsed.toString()); }
+  function scansLeft() { return Math.max(0, SCAN_LIMIT - scansUsed); }
+
+  function updateScanUI() {
+    const used = scansUsed;
+    const left = scansLeft();
+    const pct = Math.min(100, (used / SCAN_LIMIT) * 100);
+    const nearLimit = used >= 15;
+    const atLimit = used >= SCAN_LIMIT;
+
+    // Closet banner
+    document.getElementById('banner-used').textContent = used;
+    const bar = document.getElementById('banner-bar');
+    bar.style.width = pct + '%';
+    bar.className = 'scan-bar-fill' + (atLimit ? ' full' : nearLimit ? ' near' : '');
+    const lbl = document.getElementById('banner-label');
+    lbl.textContent = atLimit ? 'Limit reached' : left + ' left';
+    lbl.className = 'scan-count-label' + (atLimit ? ' full' : nearLimit ? ' near' : '');
+
+    // Add screen bar
+    const addBar = document.getElementById('add-bar');
+    addBar.style.width = pct + '%';
+    addBar.className = 'scan-bar-fill' + (atLimit ? ' full' : nearLimit ? ' near' : '');
+    const addLbl = document.getElementById('add-scan-label');
+    addLbl.textContent = atLimit ? 'Limit reached' : left + ' left';
+    addLbl.className = 'scan-count-label' + (atLimit ? ' full' : nearLimit ? ' near' : '');
+
+    // Limit banner on add screen
+    document.getElementById('limit-banner').classList.toggle('show', atLimit);
+    document.getElementById('upload-sub-text').textContent = atLimit
+      ? 'Photo saved — no scans left'
+      : `AI will auto-tag it · ${left} scan${left !== 1 ? 's' : ''} left`;
+  }
+
+  function showScreen(name) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.navbtn').forEach(b => b.classList.remove('active'));
+    document.getElementById('screen-' + name).classList.add('active');
+    const nav = document.getElementById('nav-' + name);
+    if (nav) nav.classList.add('active');
+    if (name === 'closet') renderCloset();
+    if (name === 'outfits') { fetchWeather(); updateWeatherDate(); }
+    if (name === 'add') resetAddForm();
+    window.scrollTo(0, 0);
+  }
+
+  function goToAdd() {
+    showScreen('add');
+  }
+
+  function renderCloset() {
+    updateScanUI();
+    const filtered = currentFilter === 'All' ? wardrobe : wardrobe.filter(i => i.category === currentFilter);
+    document.getElementById('item-count').textContent = wardrobe.length + ' item' + (wardrobe.length !== 1 ? 's' : '');
+    const container = document.getElementById('closet-content');
+    if (wardrobe.length === 0) {
+      container.innerHTML = `<div class="empty-state"><div class="icon">👗</div><p>Your closet is empty.<br>Add your first item to get started.</p></div>`;
+      return;
+    }
+    const categories = [...new Set(filtered.map(i => i.category))];
+    let html = '';
+    categories.forEach(cat => {
+      const items = filtered.filter(i => i.category === cat);
+      html += `<div class="section-label">${cat}s</div><div class="clothes-grid">`;
+      items.forEach((item, idx) => {
+        const globalIdx = wardrobe.indexOf(item);
+        const seasonTag = item.season !== 'All seasons' ? `<span class="tag green">${item.season}</span>` : '';
+        const imgContent = item.imageData ? `<img src="${item.imageData}" alt="${item.name}">` : `<span>${EMOJIS[item.category] || '👔'}</span>`;
+        html += `<div class="cloth-card" onclick="showItemDetail(${globalIdx})" style="animation-delay:${idx*0.05}s">
+          <div class="cloth-img">${imgContent}</div>
+          <div class="cloth-info">
+            <div class="cloth-name">${item.name || item.category}</div>
+            <div class="cloth-brand">${item.brand ? item.brand + (item.size ? ' · ' + item.size : '') : (item.size || '')}</div>
+            <div class="cloth-tags"><span class="tag">${item.occasion}</span>${seasonTag}</div>
+          </div>
+        </div>`;
+      });
+      html += '</div>';
+    });
+    if (filtered.length === 0) {
+      html = `<div class="empty-state"><div class="icon">${EMOJIS[currentFilter]||'👕'}</div><p>No ${currentFilter.toLowerCase()}s added yet.</p></div>`;
+    }
+    container.innerHTML = html;
+  }
+
+  function filterCloset(cat, el) {
+    currentFilter = cat;
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    renderCloset();
+  }
+
+  function showItemDetail(idx) {
+    const item = wardrobe[idx];
+    if (!item) return;
+    const imgContent = item.imageData
+      ? `<img src="${item.imageData}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:var(--radius);" alt="${item.name}">`
+      : `<div style="width:100%;aspect-ratio:1;background:var(--surface2);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:72px;">${EMOJIS[item.category]||'👔'}</div>`;
+    const rows = [
+      item.brand ? ['Brand', item.brand] : null,
+      item.size ? ['Size', item.size] : null,
+      ['Category', item.category],
+      ['Occasion', item.occasion],
+      ['Season', item.season],
+      ['Color', item.color],
+    ].filter(Boolean);
+    document.getElementById('modal-content').innerHTML = `
+      <h2>${item.name || item.category}</h2>
+      ${imgContent}
+      ${rows.map(([l,v]) => `<div class="detail-row"><span class="detail-label">${l}</span><span class="detail-val">${v}</span></div>`).join('')}
+      <button class="delete-btn" onclick="deleteItem(${idx})">Remove from closet</button>`;
+    document.getElementById('modal-overlay').classList.add('show');
+  }
+
+  function closeModal(e) {
+    if (e.target === document.getElementById('modal-overlay')) {
+      document.getElementById('modal-overlay').classList.remove('show');
+    }
+  }
+
+  function deleteItem(idx) {
+    wardrobe.splice(idx, 1);
+    saveWardrobe();
+    document.getElementById('modal-overlay').classList.remove('show');
+    renderCloset();
+  }
+
+  // === ADD ITEM ===
+  function triggerUpload() { document.getElementById('file-input').click(); }
+
+  function resetAddForm() {
+    document.getElementById('f-name').value = '';
+    document.getElementById('f-brand').value = '';
+    document.getElementById('f-size').value = '';
+    document.getElementById('f-category').value = 'Top';
+    document.getElementById('f-occasion').value = 'Casual';
+    document.getElementById('f-season').value = 'All seasons';
+    document.getElementById('upload-preview').style.display = 'none';
+    document.getElementById('upload-placeholder').style.display = 'flex';
+    document.getElementById('ai-banner').classList.remove('show');
+    document.getElementById('ai-loading').classList.remove('show');
+    document.getElementById('file-input').value = '';
+    currentImageData = null;
+    document.querySelectorAll('.color-dot').forEach((d,i) => d.classList.toggle('selected', i === 0));
+    updateScanUI();
+  }
+
+  async function handleImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      currentImageData = e.target.result;
+      const preview = document.getElementById('upload-preview');
+      preview.src = currentImageData;
+      preview.style.display = 'block';
+      document.getElementById('upload-placeholder').style.display = 'none';
+      if (scansLeft() > 0) {
+        await autoTagImage(currentImageData);
+      } else {
+        document.getElementById('ai-banner-text').textContent = 'Scan limit reached — fill in the details below manually.';
+        document.getElementById('ai-banner').classList.add('show');
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function autoTagImage(imageData) {
+    document.getElementById('ai-loading').classList.add('show');
+    document.getElementById('ai-banner').classList.remove('show');
+    try {
+      const base64 = imageData.split(',')[1];
+      const mediaType = imageData.split(';')[0].split(':')[1];
+      const response = await fetch(`${API_BASE}/api/claude`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 400,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+              { type: 'text', text: `Analyze this clothing item. Respond ONLY with a JSON object, no markdown:
+{"name":"descriptive item name","brand":"brand if visible or empty string","category":"Top|Bottom|Shoes|Outerwear|Accessory","occasion":"Casual|Smart casual|Formal|Work|Gym|Party|Outdoor","season":"All seasons|Spring/Summer|Fall/Winter|Summer|Winter","color":"Black|White|Navy|Olive green|Brown|Gray|Red|Blue|Yellow|Pink|Khaki|Purple","description":"one short sentence about the item"}` }
+            ]
+          }]
+        })
+      });
+      const data = await response.json();
+      const text = data.content?.[0]?.text || '';
+      const clean = text.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(clean);
+
+      document.getElementById('f-name').value = parsed.name || '';
+      document.getElementById('f-brand').value = parsed.brand || '';
+      if (parsed.category) document.getElementById('f-category').value = parsed.category;
+      if (parsed.occasion) document.getElementById('f-occasion').value = parsed.occasion;
+      if (parsed.season) document.getElementById('f-season').value = parsed.season;
+      if (parsed.color) {
+        document.querySelectorAll('.color-dot').forEach(d => {
+          d.classList.toggle('selected', d.dataset.color === parsed.color);
+        });
+      }
+
+      // Count the scan
+      scansUsed++;
+      saveScans();
+      updateScanUI();
+
+      document.getElementById('ai-banner-text').textContent = `AI detected: ${parsed.description || parsed.name}`;
+      document.getElementById('ai-banner').classList.add('show');
+    } catch (err) {
+      document.getElementById('ai-banner-text').textContent = 'Could not auto-tag — fill in details manually.';
+      document.getElementById('ai-banner').classList.add('show');
+    }
+    document.getElementById('ai-loading').classList.remove('show');
+  }
+
+  function selectColor(el) {
+    document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+
+  function saveItem() {
+    const name = document.getElementById('f-name').value.trim();
+    const brand = document.getElementById('f-brand').value.trim();
+    const size = document.getElementById('f-size').value.trim();
+    const category = document.getElementById('f-category').value;
+    const occasion = document.getElementById('f-occasion').value;
+    const season = document.getElementById('f-season').value;
+    const colorDot = document.querySelector('.color-dot.selected');
+    const color = colorDot ? colorDot.dataset.color : 'Black';
+    wardrobe.push({ id: Date.now(), name: name || category, brand, size, category, occasion, season, color, imageData: currentImageData });
+    saveWardrobe();
+    showScreen('closet');
+  }
+
+  // === WEATHER ===
+  async function fetchWeather() {
+    try {
+      const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=41.9742&longitude=-87.6698&current=temperature_2m,weathercode,windspeed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph');
+      const d = await res.json();
+      const temp = Math.round(d.current.temperature_2m);
+      const code = d.current.weathercode;
+      const wind = Math.round(d.current.windspeed_10m);
+      const {emoji, desc} = weatherCodeToInfo(code, wind);
+      document.getElementById('w-temp').textContent = temp + '°F';
+      document.getElementById('w-desc').textContent = desc;
+      document.getElementById('w-emoji').textContent = emoji;
+      weatherData = { temp, code, wind, desc };
+    } catch(e) {
+      document.getElementById('w-desc').textContent = 'Weather unavailable';
+    }
+  }
+
+  function weatherCodeToInfo(code, wind) {
+    if (code === 0) return { emoji: '☀️', desc: 'Clear sky' + (wind > 15 ? ' · windy' : '') };
+    if (code <= 2) return { emoji: '⛅', desc: 'Partly cloudy' + (wind > 15 ? ' · windy' : '') };
+    if (code === 3) return { emoji: '☁️', desc: 'Overcast' };
+    if (code <= 49) return { emoji: '🌫', desc: 'Foggy / misty' };
+    if (code <= 59) return { emoji: '🌦', desc: 'Light drizzle' };
+    if (code <= 69) return { emoji: '🌧', desc: 'Rainy' };
+    if (code <= 79) return { emoji: '❄️', desc: 'Snowy' };
+    if (code <= 82) return { emoji: '🌦', desc: 'Rain showers' };
+    if (code <= 86) return { emoji: '🌨', desc: 'Snow showers' };
+    return { emoji: '⛈', desc: 'Thunderstorm' };
+  }
+
+  function updateWeatherDate() {
+    document.getElementById('weather-date').textContent = new Date().toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
+  }
+
+  function selectOcc(el) {
+    document.querySelectorAll('.occ-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    currentOcc = el.textContent;
+  }
+
+  async function generateOutfits() {
+    if (wardrobe.length < 2) {
+      document.getElementById('outfits-container').innerHTML = `<div class="no-outfits">Add at least 2 items to get outfit suggestions.</div>`;
+      return;
+    }
+    const btn = document.getElementById('gen-btn');
+    btn.classList.add('loading'); btn.disabled = true;
+    document.getElementById('outfits-container').innerHTML = '';
+    const weatherDesc = weatherData ? `${weatherData.temp}°F, ${weatherData.desc}` : 'unknown weather';
+    const wardrobeList = wardrobe.map(i => `- ${i.name}${i.brand ? ' ('+i.brand+')' : ''} | ${i.category} | ${i.color} | ${i.occasion} | ${i.season}`).join('\n');
+    try {
+      const response = await fetch(`${API_BASE}/api/claude`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{
+            role: 'user',
+            content: `You are a personal stylist. Suggest 2-3 outfit combinations from this wardrobe.
+
+Wardrobe:
+${wardrobeList}
+
+Context: Occasion: ${currentOcc}, Weather: ${weatherDesc}
+
+Respond ONLY with a JSON array, no markdown. Each object:
+{"title":"outfit name","items":["exact item name 1","exact item name 2","exact item name 3"],"reason":"1-2 sentence styling note","badge":"Best match or similar label — only on first outfit"}
+
+Only use items that exist in the wardrobe. 2-3 items per outfit.`
+          }]
+        })
+      });
+      const data = await response.json();
+      const text = data.content?.[0]?.text || '[]';
+      const outfits = JSON.parse(text.replace(/```json|```/g, '').trim());
+      renderOutfits(outfits);
+    } catch(e) {
+      document.getElementById('outfits-container').innerHTML = `<div class="no-outfits">Could not generate outfits. Please try again.</div>`;
+    }
+    btn.classList.remove('loading'); btn.disabled = false;
+  }
+
+  function renderOutfits(outfits) {
+    const container = document.getElementById('outfits-container');
+    if (!outfits.length) {
+      container.innerHTML = `<div class="no-outfits">No combinations found for this occasion. Try a different occasion or add more items.</div>`;
+      return;
+    }
+    container.innerHTML = outfits.map((outfit, i) => {
+      const itemsHtml = outfit.items.map(name => {
+        const found = wardrobe.find(w => w.name.toLowerCase() === name.toLowerCase());
+        const emoji = found ? (EMOJIS[found.category] || '👔') : '👔';
+        const img = found?.imageData ? `<img src="${found.imageData}" alt="${name}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;">` : '';
+        return `<div class="outfit-col">
+          <div class="outfit-item" style="position:relative;">${img}${!found?.imageData ? emoji : ''}</div>
+          <div class="outfit-item-label">${name}</div>
+        </div>`;
+      }).join('');
+      const badge = outfit.badge ? `<span class="outfit-badge">${outfit.badge}</span>` : '';
+      return `<div class="outfit-card" style="animation-delay:${i*0.1}s">
+        <div class="outfit-header"><span class="outfit-title">${outfit.title || 'Outfit '+(i+1)}</span>${badge}</div>
+        <div class="outfit-items">${itemsHtml}</div>
+        <div class="outfit-reason">${outfit.reason}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Init
+  renderCloset();
+  updateScanUI();
+  updateWeatherDate();
+</script>
+</body>
+</html>
