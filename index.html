@@ -57,6 +57,7 @@
     display: flex; align-items: center; justify-content: center;
     font-size: 16px; transition: transform 0.15s;
   }
+  .icon-btn svg { width: 18px; height: 18px; stroke: var(--text); }
   .icon-btn:active { transform: scale(0.92); }
   .bottomnav {
     position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
@@ -654,19 +655,36 @@
     if (!file) return;
     const reader = new FileReader();
     reader.onload = async (e) => {
-      currentImageData = e.target.result;
+      const compressed = await compressImage(e.target.result, 800, 0.7);
+      currentImageData = compressed;
       const preview = document.getElementById('upload-preview');
-      preview.src = currentImageData;
+      preview.src = compressed;
       preview.style.display = 'block';
       document.getElementById('upload-placeholder').style.display = 'none';
       if (scansLeft() > 0) {
-        await autoTagImage(currentImageData);
+        await autoTagImage(compressed);
       } else {
         document.getElementById('ai-banner-text').textContent = 'Scan limit reached — fill in the details below manually.';
         document.getElementById('ai-banner').classList.add('show');
       }
     };
     reader.readAsDataURL(file);
+  }
+
+  function compressImage(dataUrl, maxSize, quality) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if (w > h && w > maxSize) { h = h * maxSize / w; w = maxSize; }
+        else if (h > maxSize) { w = w * maxSize / h; h = maxSize; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = dataUrl;
+    });
   }
 
   async function autoTagImage(imageData) {
@@ -727,6 +745,9 @@
   }
 
   function saveItem() {
+    const btn = document.getElementById('save-btn');
+    btn.disabled = true;
+    btn.textContent = 'Saved!';
     const name = document.getElementById('f-name').value.trim();
     const brand = document.getElementById('f-brand').value.trim();
     const size = document.getElementById('f-size').value.trim();
@@ -737,7 +758,7 @@
     const color = colorDot ? colorDot.dataset.color : 'Black';
     wardrobe.push({ id: Date.now(), name: name || category, brand, size, category, occasion, season, color, imageData: currentImageData });
     saveWardrobe();
-    showScreen('closet');
+    setTimeout(() => showScreen('closet'), 600);
   }
 
   // === WEATHER ===
