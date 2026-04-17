@@ -288,6 +288,51 @@
   }
   .filter-chip.active { background: var(--surface2); color: var(--text); border-color: var(--text3); }
 
+
+  /* WELCOME SCREEN */
+  .welcome-screen {
+    position: fixed; inset: 0; background: var(--bg);
+    z-index: 100; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 40px 32px; text-align: center;
+  }
+  .welcome-screen.hidden { display: none; }
+  .welcome-logo { font-size: 52px; margin-bottom: 24px; }
+  .welcome-title { font-family: var(--font-display); font-size: 42px; font-weight: 400; letter-spacing: -1px; margin-bottom: 20px; color: var(--text); }
+  .welcome-msg { font-size: 16px; color: var(--text2); line-height: 1.7; margin-bottom: 40px; max-width: 280px; }
+  .welcome-btn {
+    width: 100%; max-width: 280px; padding: 16px;
+    background: var(--accent); color: white;
+    border: none; border-radius: var(--radius);
+    font-size: 16px; font-weight: 600; font-family: var(--font-body);
+    cursor: pointer; transition: opacity 0.15s, transform 0.15s;
+  }
+  .welcome-btn:active { opacity: 0.85; transform: scale(0.98); }
+
+  /* CITY EDIT */
+  .city-edit-row { display: flex; align-items: center; gap: 6px; }
+  .city-edit-btn { background: none; border: none; cursor: pointer; padding: 2px; opacity: 0.7; }
+  .city-edit-btn svg { width: 12px; height: 12px; stroke: white; }
+  .city-input-wrap { display: none; margin-top: 8px; }
+  .city-input-wrap.show { display: flex; gap: 6px; }
+  .city-input {
+    flex: 1; padding: 7px 10px; border-radius: var(--radius-sm);
+    border: none; background: rgba(255,255,255,0.15);
+    color: white; font-size: 13px; font-family: var(--font-body);
+    outline: none;
+  }
+  .city-input::placeholder { color: rgba(255,255,255,0.5); }
+  .city-confirm-btn {
+    padding: 7px 12px; border-radius: var(--radius-sm);
+    background: rgba(255,255,255,0.2); border: none;
+    color: white; font-size: 12px; font-weight: 600; cursor: pointer;
+    font-family: var(--font-body);
+  }
+
+  /* ITEM NUDGE */
+  .item-nudge { font-size: 11px; color: var(--text3); text-align: center; margin-top: -10px; margin-bottom: 14px; }
+  .item-nudge.ready { color: var(--accent); }
+
   @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes pulse { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }
@@ -295,6 +340,15 @@
 </style>
 </head>
 <body>
+
+<!-- WELCOME SCREEN -->
+<div class="welcome-screen" id="welcome-screen">
+  <div class="welcome-logo">👗</div>
+  <div class="welcome-title">Fits</div>
+  <div class="welcome-msg">Your entire wardrobe, digitized. Fits learns what you own and builds outfits around your day — the weather, where you're going, and how you want to show up.</div>
+  <button class="welcome-btn" onclick="startApp()">Get started</button>
+</div>
+
 
 <!-- CLOSET SCREEN -->
 <div class="screen active" id="screen-closet">
@@ -344,7 +398,16 @@
     <div class="weather-card">
       <div class="weather-emoji" id="w-emoji">🌤</div>
       <div class="weather-body">
-        <div class="weather-city" id="w-city">Chicago, IL</div>
+        <div class="city-edit-row">
+          <div class="weather-city" id="w-city">Loading...</div>
+          <button class="city-edit-btn" onclick="toggleCityEdit()" title="Change city">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+        </div>
+        <div class="city-input-wrap" id="city-input-wrap">
+          <input type="text" class="city-input" id="city-input" placeholder="Enter your city..." onkeydown="if(event.key==='Enter') confirmCity()">
+          <button class="city-confirm-btn" onclick="confirmCity()">Done</button>
+        </div>
         <div class="weather-desc" id="w-desc">Loading weather...</div>
       </div>
       <div class="weather-temp" id="w-temp">—°</div>
@@ -362,6 +425,7 @@
       <span class="btn-label">✦ Generate outfits</span>
       <div class="spinner"></div>
     </button>
+    <div class="item-nudge" id="item-nudge"></div>
     <div id="outfits-container"></div>
   </div>
 </div>
@@ -495,6 +559,9 @@
 
   let wardrobe = JSON.parse(localStorage.getItem('wardrobe') || '[]');
   let scansUsed = parseInt(localStorage.getItem('scansUsed') || '0');
+  let userCity = localStorage.getItem('userCity') || '';
+  let userLat = parseFloat(localStorage.getItem('userLat') || '0');
+  let userLon = parseFloat(localStorage.getItem('userLon') || '0');
   let currentImageData = null;
   let currentFilter = 'All';
   let currentOcc = 'Casual';
@@ -544,7 +611,7 @@
     const nav = document.getElementById('nav-' + name);
     if (nav) nav.classList.add('active');
     if (name === 'closet') renderCloset();
-    if (name === 'outfits') { fetchWeather(); updateWeatherDate(); }
+    if (name === 'outfits') { fetchWeather(); updateWeatherDate(); updateItemNudge(); }
     if (name === 'add') resetAddForm();
     window.scrollTo(0, 0);
   }
@@ -763,8 +830,13 @@
 
   // === WEATHER ===
   async function fetchWeather() {
+    if (!userLat || !userLon) {
+      document.getElementById('w-desc').textContent = 'Set your city above';
+      document.getElementById('w-temp').textContent = '—°';
+      return;
+    }
     try {
-      const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=41.9742&longitude=-87.6698&current=temperature_2m,weathercode,windspeed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph');
+      const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${userLat}&longitude=${userLon}&current=temperature_2m,weathercode,windspeed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph`);
       const d = await res.json();
       const temp = Math.round(d.current.temperature_2m);
       const code = d.current.weathercode;
@@ -773,9 +845,44 @@
       document.getElementById('w-temp').textContent = temp + '°F';
       document.getElementById('w-desc').textContent = desc;
       document.getElementById('w-emoji').textContent = emoji;
+      document.getElementById('w-city').textContent = userCity;
       weatherData = { temp, code, wind, desc };
     } catch(e) {
       document.getElementById('w-desc').textContent = 'Weather unavailable';
+    }
+  }
+
+  function toggleCityEdit() {
+    const wrap = document.getElementById('city-input-wrap');
+    wrap.classList.toggle('show');
+    if (wrap.classList.contains('show')) {
+      document.getElementById('city-input').focus();
+    }
+  }
+
+  async function confirmCity() {
+    const input = document.getElementById('city-input').value.trim();
+    if (!input) return;
+    document.getElementById('city-input-wrap').classList.remove('show');
+    document.getElementById('w-desc').textContent = 'Finding city...';
+    try {
+      const geo = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(input)}&count=1`);
+      const gd = await geo.json();
+      if (gd.results && gd.results.length > 0) {
+        const r = gd.results[0];
+        userCity = r.name + (r.admin1 ? ', ' + r.admin1 : '');
+        userLat = r.latitude;
+        userLon = r.longitude;
+        localStorage.setItem('userCity', userCity);
+        localStorage.setItem('userLat', userLat);
+        localStorage.setItem('userLon', userLon);
+        document.getElementById('w-city').textContent = userCity;
+        fetchWeather();
+      } else {
+        document.getElementById('w-desc').textContent = 'City not found, try again';
+      }
+    } catch(e) {
+      document.getElementById('w-desc').textContent = 'Could not find city';
     }
   }
 
@@ -870,10 +977,48 @@ Only use items that exist in the wardrobe. 2-3 items per outfit.`
     }).join('');
   }
 
+  function updateItemNudge() {
+    const nudge = document.getElementById('item-nudge');
+    const count = wardrobe.length;
+    if (count === 0) {
+      nudge.textContent = 'Add items to your closet to get started';
+      nudge.className = 'item-nudge';
+    } else if (count < 5) {
+      nudge.textContent = `You have ${count} item${count !== 1 ? 's' : ''} — add at least 5 for better suggestions`;
+      nudge.className = 'item-nudge';
+    } else {
+      nudge.textContent = `${count} items in your closet ✓`;
+      nudge.className = 'item-nudge ready';
+    }
+  }
+
+  function startApp() {
+    const seen = localStorage.getItem('welcomeSeen');
+    if (!seen) {
+      // Show city setup after welcome
+      localStorage.setItem('welcomeSeen', '1');
+    }
+    document.getElementById('welcome-screen').classList.add('hidden');
+    // Show city input immediately if no city set
+    if (!userCity) {
+      showScreen('outfits');
+      setTimeout(() => {
+        toggleCityEdit();
+      }, 400);
+    } else {
+      showScreen('closet');
+    }
+  }
+
   // Init
+  const welcomeSeen = localStorage.getItem('welcomeSeen');
+  if (welcomeSeen) {
+    document.getElementById('welcome-screen').classList.add('hidden');
+  }
   renderCloset();
   updateScanUI();
   updateWeatherDate();
+  updateItemNudge();
 </script>
 </body>
 </html>
