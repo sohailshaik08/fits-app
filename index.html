@@ -764,8 +764,9 @@
     document.getElementById('modal-overlay').classList.remove('show');
     isManualMode = true;
     editingIdx = idx;
+    // showScreen first (which calls resetAddForm), then fill in values
+    showScreen('add');
     document.getElementById('add-screen-title').textContent = 'Edit Item';
-    // Pre-fill form
     document.getElementById('f-name').value = item.name || '';
     document.getElementById('f-brand').value = item.brand || '';
     document.getElementById('f-size').value = item.size || '';
@@ -775,7 +776,6 @@
     document.querySelectorAll('.color-dot').forEach(d => {
       d.classList.toggle('selected', d.dataset.color === item.color);
     });
-    // Show existing photo if any
     if (item.imageData) {
       currentImageData = item.imageData;
       const preview = document.getElementById('upload-preview');
@@ -791,7 +791,6 @@
     document.getElementById('ai-loading').classList.remove('show');
     document.getElementById('limit-banner').classList.remove('show');
     document.getElementById('save-btn').textContent = 'Save changes';
-    showScreen('add');
   }
 
   function renderCloset() {
