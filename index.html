@@ -334,6 +334,43 @@
   .item-nudge.ready { color: var(--accent); }
 
 
+
+  /* ADD CHOICE BOTTOM SHEET */
+  .choice-sheet {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    z-index: 50; display: none; align-items: flex-end; justify-content: center;
+  }
+  .choice-sheet.show { display: flex; }
+  .choice-box {
+    background: var(--surface); border-radius: 24px 24px 0 0;
+    width: 100%; max-width: 430px; padding: 20px 20px 32px;
+    animation: slideUp 0.25s ease;
+  }
+  .choice-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--border2); margin: 0 auto 18px; }
+  .choice-title { font-size: 13px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; text-align: center; margin-bottom: 14px; }
+  .choice-btn {
+    width: 100%; padding: 14px 16px; border-radius: var(--radius);
+    border: 1px solid var(--border2); background: var(--surface);
+    display: flex; align-items: center; gap: 12px;
+    cursor: pointer; margin-bottom: 10px; text-align: left;
+    transition: background 0.15s;
+  }
+  .choice-btn:active { background: var(--surface2); }
+  .choice-btn-icon { font-size: 22px; width: 36px; text-align: center; }
+  .choice-btn-text { flex: 1; }
+  .choice-btn-label { font-size: 14px; font-weight: 500; color: var(--text); display: block; }
+  .choice-btn-sub { font-size: 11px; color: var(--text3); margin-top: 1px; display: block; }
+  .choice-btn.disabled { opacity: 0.4; cursor: not-allowed; }
+  .choice-cancel { width: 100%; padding: 13px; background: none; border: none; color: var(--text2); font-size: 14px; font-family: var(--font-body); cursor: pointer; margin-top: 2px; }
+
+  /* EDIT MODE */
+  .edit-btn {
+    width: 100%; padding: 13px; margin-top: 8px;
+    background: none; border: 1px solid var(--border2); color: var(--text);
+    border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; font-family: var(--font-body);
+    cursor: pointer;
+  }
+
   /* FAVORITES */
   .fav-empty { text-align: center; padding: 48px 24px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
   .fav-empty .icon { font-size: 48px; }
@@ -373,7 +410,7 @@
         <h1>My Closet</h1>
         <div class="sub" id="item-count">0 items</div>
       </div>
-      <button class="icon-btn" onclick="goToAdd()">
+      <button class="icon-btn" onclick="openChoiceSheet()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
     </div>
@@ -449,7 +486,7 @@
 <div class="screen" id="screen-add">
   <div class="topbar">
     <div class="topbar-row">
-      <h1>Add Item</h1>
+      <h1 id="add-screen-title">Add Item</h1>
       <button class="icon-btn" onclick="showScreen('closet')">✕</button>
     </div>
   </div>
@@ -568,6 +605,30 @@
 </div>
 
 
+<!-- ADD CHOICE SHEET -->
+<div class="choice-sheet" id="choice-sheet" onclick="closeChoiceSheet(event)">
+  <div class="choice-box">
+    <div class="choice-handle"></div>
+    <div class="choice-title">Add to closet</div>
+    <button class="choice-btn" id="choice-ai" onclick="startAdd('ai')">
+      <span class="choice-btn-icon">✦</span>
+      <span class="choice-btn-text">
+        <span class="choice-btn-label">Scan with AI</span>
+        <span class="choice-btn-sub" id="choice-ai-sub">Auto-fill details from a photo · 1 scan</span>
+      </span>
+    </button>
+    <button class="choice-btn" onclick="startAdd('manual')">
+      <span class="choice-btn-icon">📝</span>
+      <span class="choice-btn-text">
+        <span class="choice-btn-label">Add manually</span>
+        <span class="choice-btn-sub">Take a photo and fill in details yourself · no scan used</span>
+      </span>
+    </button>
+    <button class="choice-cancel" onclick="closeChoiceSheet()">Cancel</button>
+  </div>
+</div>
+
+
 <!-- BOTTOM NAV -->
 <nav class="bottomnav">
   <button class="navbtn active" id="nav-closet" onclick="showScreen('closet')">
@@ -609,6 +670,8 @@
   let userLat = parseFloat(localStorage.getItem('userLat') || '0');
   let userLon = parseFloat(localStorage.getItem('userLon') || '0');
   let currentImageData = null;
+  let isManualMode = false;
+  let editingIdx = -1;
   let currentFilter = 'All';
   let currentOcc = 'Casual';
   let weatherData = null;
@@ -663,7 +726,67 @@
     window.scrollTo(0, 0);
   }
 
-  function goToAdd() {
+  function openChoiceSheet() {
+    const left = scansLeft();
+    const aiBtn = document.getElementById('choice-ai');
+    const aiSub = document.getElementById('choice-ai-sub');
+    if (left <= 0) {
+      aiBtn.classList.add('disabled');
+      aiSub.textContent = 'No scans remaining';
+    } else {
+      aiBtn.classList.remove('disabled');
+      aiSub.textContent = `Auto-fill details from a photo · ${left} scan${left !== 1 ? 's' : ''} left`;
+    }
+    document.getElementById('choice-sheet').classList.add('show');
+  }
+
+  function closeChoiceSheet(e) {
+    if (!e || e.target === document.getElementById('choice-sheet')) {
+      document.getElementById('choice-sheet').classList.remove('show');
+    }
+  }
+
+  function startAdd(mode) {
+    document.getElementById('choice-sheet').classList.remove('show');
+    isManualMode = mode === 'manual';
+    editingIdx = -1;
+    document.getElementById('add-screen-title').textContent = isManualMode ? 'Add Manually' : 'Scan with AI';
+    showScreen('add');
+  }
+
+  function openEditItem(idx) {
+    const item = wardrobe[idx];
+    if (!item) return;
+    document.getElementById('modal-overlay').classList.remove('show');
+    isManualMode = true;
+    editingIdx = idx;
+    document.getElementById('add-screen-title').textContent = 'Edit Item';
+    // Pre-fill form
+    document.getElementById('f-name').value = item.name || '';
+    document.getElementById('f-brand').value = item.brand || '';
+    document.getElementById('f-size').value = item.size || '';
+    document.getElementById('f-category').value = item.category || 'Top';
+    document.getElementById('f-occasion').value = item.occasion || 'Casual';
+    document.getElementById('f-season').value = item.season || 'All seasons';
+    document.querySelectorAll('.color-dot').forEach(d => {
+      d.classList.toggle('selected', d.dataset.color === item.color);
+    });
+    // Show existing photo if any
+    if (item.imageData) {
+      currentImageData = item.imageData;
+      const preview = document.getElementById('upload-preview');
+      preview.src = item.imageData;
+      preview.style.display = 'block';
+      document.getElementById('upload-placeholder').style.display = 'none';
+    } else {
+      currentImageData = null;
+      document.getElementById('upload-preview').style.display = 'none';
+      document.getElementById('upload-placeholder').style.display = 'flex';
+    }
+    document.getElementById('ai-banner').classList.remove('show');
+    document.getElementById('ai-loading').classList.remove('show');
+    document.getElementById('limit-banner').classList.remove('show');
+    document.getElementById('save-btn').textContent = 'Save changes';
     showScreen('add');
   }
 
@@ -734,6 +857,7 @@
       <h2>${item.name || item.category}</h2>
       ${imgContent}
       ${rows.map(([l,v]) => `<div class="detail-row"><span class="detail-label">${l}</span><span class="detail-val">${v}</span></div>`).join('')}
+      <button class="edit-btn" onclick="openEditItem(${idx})">Edit item</button>
       <button class="delete-btn" onclick="deleteItem(${idx})">Remove from closet</button>`;
     document.getElementById('modal-overlay').classList.add('show');
   }
@@ -768,6 +892,7 @@
     document.getElementById('file-input').value = '';
     currentImageData = null;
     document.querySelectorAll('.color-dot').forEach((d,i) => d.classList.toggle('selected', i === 0));
+    document.getElementById('save-btn').textContent = 'Save to closet';
     updateScanUI();
   }
 
@@ -782,8 +907,10 @@
       preview.src = compressed;
       preview.style.display = 'block';
       document.getElementById('upload-placeholder').style.display = 'none';
-      if (scansLeft() > 0) {
+      if (!isManualMode && scansLeft() > 0) {
         await autoTagImage(compressed);
+      } else if (isManualMode) {
+        // manual mode - just show the photo, no AI
       } else {
         document.getElementById('ai-banner-text').textContent = 'Scan limit reached — fill in the details below manually.';
         document.getElementById('ai-banner').classList.add('show');
@@ -868,7 +995,7 @@
   function saveItem() {
     const btn = document.getElementById('save-btn');
     btn.disabled = true;
-    btn.textContent = 'Saved!';
+    btn.textContent = editingIdx >= 0 ? 'Saved!' : 'Saved!';
     const name = document.getElementById('f-name').value.trim();
     const brand = document.getElementById('f-brand').value.trim();
     const size = document.getElementById('f-size').value.trim();
@@ -877,7 +1004,13 @@
     const season = document.getElementById('f-season').value;
     const colorDot = document.querySelector('.color-dot.selected');
     const color = colorDot ? colorDot.dataset.color : 'Black';
-    wardrobe.push({ id: Date.now(), name: name || category, brand, size, category, occasion, season, color, imageData: currentImageData });
+    if (editingIdx >= 0) {
+      // Editing existing item
+      const existing = wardrobe[editingIdx];
+      wardrobe[editingIdx] = { ...existing, name: name || category, brand, size, category, occasion, season, color, imageData: currentImageData || existing.imageData };
+    } else {
+      wardrobe.push({ id: Date.now(), name: name || category, brand, size, category, occasion, season, color, imageData: currentImageData });
+    }
     saveWardrobe();
     setTimeout(() => { currentFilter = 'All'; showScreen('closet'); }, 600);
   }
