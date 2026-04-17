@@ -291,18 +291,18 @@
 
   /* WELCOME SCREEN */
   .welcome-screen {
-    position: fixed; inset: 0; background: var(--bg);
+    position: fixed; inset: 0; background: #0D1F35;
     z-index: 100; display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     padding: 40px 32px; text-align: center;
   }
   .welcome-screen.hidden { display: none; }
   .welcome-logo { font-size: 52px; margin-bottom: 24px; }
-  .welcome-title { font-family: var(--font-display); font-size: 42px; font-weight: 400; letter-spacing: -1px; margin-bottom: 20px; color: var(--text); }
-  .welcome-msg { font-size: 16px; color: var(--text2); line-height: 1.7; margin-bottom: 40px; max-width: 280px; }
+  .welcome-title { font-family: var(--font-display); font-size: 42px; font-weight: 400; letter-spacing: -1px; margin-bottom: 20px; color: #ffffff; }
+  .welcome-msg { font-size: 16px; color: rgba(255,255,255,0.65); line-height: 1.7; margin-bottom: 40px; max-width: 280px; }
   .welcome-btn {
     width: 100%; max-width: 280px; padding: 16px;
-    background: var(--accent); color: white;
+    background: #ffffff; color: #0D1F35;
     border: none; border-radius: var(--radius);
     font-size: 16px; font-weight: 600; font-family: var(--font-body);
     cursor: pointer; transition: opacity 0.15s, transform 0.15s;
@@ -333,6 +333,21 @@
   .item-nudge { font-size: 11px; color: var(--text3); text-align: center; margin-top: -10px; margin-bottom: 14px; }
   .item-nudge.ready { color: var(--accent); }
 
+
+  /* FAVORITES */
+  .fav-empty { text-align: center; padding: 48px 24px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .fav-empty .icon { font-size: 48px; }
+  .fav-empty p { font-size: 14px; color: var(--text2); line-height: 1.6; }
+  .heart-btn {
+    position: absolute; top: 8px; right: 8px;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: rgba(255,255,255,0.9); border: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 15px; z-index: 2;
+    transition: transform 0.15s;
+  }
+  .heart-btn:active { transform: scale(0.88); }
+
   @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes pulse { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }
@@ -343,7 +358,7 @@
 
 <!-- WELCOME SCREEN -->
 <div class="welcome-screen" id="welcome-screen">
-  <div class="welcome-logo">👗</div>
+  <div class="welcome-logo">🪞</div>
   <div class="welcome-title">Fits</div>
   <div class="welcome-msg">Your entire wardrobe, digitized. Fits learns what you own and builds outfits around your day — the weather, where you're going, and how you want to show up.</div>
   <button class="welcome-btn" onclick="startApp()">Get started</button>
@@ -532,6 +547,27 @@
   </div>
 </div>
 
+<!-- FAVORITES SCREEN -->
+<div class="screen" id="screen-favorites">
+  <div class="topbar">
+    <div class="topbar-row">
+      <h1>Saved Outfits</h1>
+      <span id="fav-count" style="font-size:12px;color:var(--text3);"></span>
+    </div>
+    <div class="filter-row" id="fav-filters">
+      <div class="filter-chip active" onclick="filterFavs('All', this)">All</div>
+      <div class="filter-chip" onclick="filterFavs('Casual', this)">Casual</div>
+      <div class="filter-chip" onclick="filterFavs('Work', this)">Work</div>
+      <div class="filter-chip" onclick="filterFavs('Date night', this)">Date night</div>
+      <div class="filter-chip" onclick="filterFavs('Gym', this)">Gym</div>
+      <div class="filter-chip" onclick="filterFavs('Party', this)">Party</div>
+      <div class="filter-chip" onclick="filterFavs('Outdoor', this)">Outdoor</div>
+    </div>
+  </div>
+  <div class="content" id="favs-content"></div>
+</div>
+
+
 <!-- BOTTOM NAV -->
 <nav class="bottomnav">
   <button class="navbtn active" id="nav-closet" onclick="showScreen('closet')">
@@ -541,6 +577,14 @@
   <button class="navbtn" id="nav-outfits" onclick="showScreen('outfits')">
     <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M12 3l1.5 5h5l-4 3 1.5 5L12 13l-4 3 1.5-5-4-3h5z"/></svg>
     <span class="navlabel">Outfits</span>
+  </button>
+  <button class="navbtn" id="nav-favorites" onclick="showScreen('favorites')">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+    <span class="navlabel">Saved</span>
+  </button>
+  <button class="navbtn" id="nav-feedback" onclick="openFeedback()">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+    <span class="navlabel">Feedback</span>
   </button>
 </nav>
 
@@ -559,6 +603,8 @@
 
   let wardrobe = JSON.parse(localStorage.getItem('wardrobe') || '[]');
   let scansUsed = parseInt(localStorage.getItem('scansUsed') || '0');
+  let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+  let favFilter = 'All';
   let userCity = localStorage.getItem('userCity') || '';
   let userLat = parseFloat(localStorage.getItem('userLat') || '0');
   let userLon = parseFloat(localStorage.getItem('userLon') || '0');
@@ -612,6 +658,7 @@
     if (nav) nav.classList.add('active');
     if (name === 'closet') renderCloset();
     if (name === 'outfits') { fetchWeather(); updateWeatherDate(); updateItemNudge(); }
+    if (name === 'favorites') { renderFavorites(); }
     if (name === 'add') resetAddForm();
     window.scrollTo(0, 0);
   }
@@ -623,7 +670,14 @@
   function renderCloset() {
     updateScanUI();
     const filtered = currentFilter === 'All' ? wardrobe : wardrobe.filter(i => i.category === currentFilter);
-    document.getElementById('item-count').textContent = wardrobe.length + ' item' + (wardrobe.length !== 1 ? 's' : '');
+    const countEl = document.getElementById('item-count');
+    const newCount = wardrobe.length + ' item' + (wardrobe.length !== 1 ? 's' : '');
+    if (countEl.textContent !== newCount) {
+      countEl.style.transform = 'scale(1.3)';
+      countEl.style.transition = 'transform 0.2s';
+      countEl.textContent = newCount;
+      setTimeout(() => { countEl.style.transform = 'scale(1)'; }, 200);
+    }
     const container = document.getElementById('closet-content');
     if (wardrobe.length === 0) {
       container.innerHTML = `<div class="empty-state"><div class="icon">👗</div><p>Your closet is empty.<br>Add your first item to get started.</p></div>`;
@@ -952,13 +1006,15 @@ Only use items that exist in the wardrobe. 2-3 items per outfit.`
     btn.classList.remove('loading'); btn.disabled = false;
   }
 
-  function renderOutfits(outfits) {
-    const container = document.getElementById('outfits-container');
+  function renderOutfits(outfits, containerId='outfits-container', showHeart=true) {
+    const container = document.getElementById(containerId);
     if (!outfits.length) {
       container.innerHTML = `<div class="no-outfits">No combinations found for this occasion. Try a different occasion or add more items.</div>`;
       return;
     }
     container.innerHTML = outfits.map((outfit, i) => {
+      const outfitId = outfit.id || ('outfit_' + Date.now() + '_' + i);
+      const isFaved = favorites.some(f => f.id === outfitId);
       const itemsHtml = outfit.items.map(name => {
         const found = wardrobe.find(w => w.name.toLowerCase() === name.toLowerCase() || w.name.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(w.name.toLowerCase()));
         const emoji = found ? (EMOJIS[found.category] || '👔') : '👔';
@@ -969,7 +1025,9 @@ Only use items that exist in the wardrobe. 2-3 items per outfit.`
         </div>`;
       }).join('');
       const badge = outfit.badge ? `<span class="outfit-badge">${outfit.badge}</span>` : '';
-      return `<div class="outfit-card" style="animation-delay:${i*0.1}s">
+      const heart = showHeart ? `<button class="heart-btn" onclick="toggleFavorite(${JSON.stringify(outfit).replace(/"/g, '&quot;')}, '${outfitId}', this)">${isFaved ? '❤️' : '🤍'}</button>` : '';
+      return `<div class="outfit-card" style="animation-delay:${i*0.1}s;position:relative;">
+        ${heart}
         <div class="outfit-header"><span class="outfit-title">${outfit.title || 'Outfit '+(i+1)}</span>${badge}</div>
         <div class="outfit-items">${itemsHtml}</div>
         <div class="outfit-reason">${outfit.reason}</div>
@@ -1008,6 +1066,46 @@ Only use items that exist in the wardrobe. 2-3 items per outfit.`
     } else {
       showScreen('closet');
     }
+  }
+
+  function toggleFavorite(outfit, outfitId, btn) {
+    outfit.id = outfitId;
+    const idx = favorites.findIndex(f => f.id === outfitId);
+    if (idx >= 0) {
+      favorites.splice(idx, 1);
+      btn.textContent = '🤍';
+    } else {
+      outfit.occasion = currentOcc;
+      favorites.push(outfit);
+      btn.textContent = '❤️';
+    }
+    localStorage.setItem('favorites', JSON.stringify(favorites));
+  }
+
+  function filterFavs(cat, el) {
+    favFilter = cat;
+    document.querySelectorAll('#fav-filters .filter-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    renderFavorites();
+  }
+
+  function renderFavorites() {
+    const filtered = favFilter === 'All' ? favorites : favorites.filter(f => f.occasion === favFilter);
+    document.getElementById('fav-count').textContent = favorites.length + ' saved';
+    const container = document.getElementById('favs-content');
+    if (favorites.length === 0) {
+      container.innerHTML = `<div class="fav-empty"><div class="icon">🤍</div><p>No saved outfits yet.<br>Tap the heart on any outfit to save it.</p></div>`;
+      return;
+    }
+    if (filtered.length === 0) {
+      container.innerHTML = `<div class="fav-empty"><div class="icon">🤍</div><p>No saved outfits for this occasion.</p></div>`;
+      return;
+    }
+    renderOutfits(filtered, 'favs-content', false);
+  }
+
+  function openFeedback() {
+    window.open('https://docs.google.com/forms/d/e/1FAIpQLSc9pxdAFJ6iNhT2ZlrjKqQwumBa_qfu-5kNNyTNv_oiTmFsNg/viewform?usp=publish-editor', '_blank');
   }
 
   // Init
