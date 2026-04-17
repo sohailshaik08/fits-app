@@ -758,7 +758,7 @@
     const color = colorDot ? colorDot.dataset.color : 'Black';
     wardrobe.push({ id: Date.now(), name: name || category, brand, size, category, occasion, season, color, imageData: currentImageData });
     saveWardrobe();
-    setTimeout(() => showScreen('closet'), 600);
+    setTimeout(() => { currentFilter = 'All'; showScreen('closet'); }, 600);
   }
 
   // === WEATHER ===
